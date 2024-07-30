@@ -4,21 +4,29 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "hardhat/console.sol";
 
 /**
  * @title AuthorizerUpgradeable
  * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
  */
-contract AuthorizerUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract AuthorizerUpgradeable is
+    Initializable,
+    OwnableUpgradeable,
+    UUPSUpgradeable
+{
     mapping(address => mapping(address => uint256)) private wards;
 
     event Rely(address indexed usr, address aim);
 
-    function init(address[] memory _wards, address[] memory _aims) external initializer {
+    function init(
+        address[] memory _wards,
+        address[] memory _aims
+    ) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
-        for (uint256 i = 0; i < _wards.length;) {
+        for (uint256 i = 0; i < _wards.length; ) {
             _rely(_wards[i], _aims[i]);
             unchecked {
                 i++;
@@ -32,10 +40,14 @@ contract AuthorizerUpgradeable is Initializable, OwnableUpgradeable, UUPSUpgrade
     }
 
     function can(address usr, address aim) external view returns (bool) {
+        console.log("AuthorizerUpgradeable - can:", usr, aim, wards[usr][aim]);
         return wards[usr][aim] == 1;
     }
 
-    function upgradeToAndCall(address imp, bytes memory wat) external payable override {
+    function upgradeToAndCall(
+        address imp,
+        bytes memory wat
+    ) external payable override {
         _authorizeUpgrade(imp);
         _upgradeToAndCallUUPS(imp, wat, true);
     }

